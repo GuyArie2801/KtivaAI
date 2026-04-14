@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.evaluator import EvaluationAgent
+from usage_tracker import get_usage
 
 app = FastAPI(title="KtivaAI Backend")
 
@@ -29,6 +30,13 @@ class AnalyzeRequest(BaseModel):
 async def root():
     return {"message": "KtivaAI Backend is running."}
 
+@app.get("/usage")
+async def check_usage():
+    """
+    GET /usage - Returns the current token usage and limit.
+    """
+    return get_usage()
+
 @app.post("/analyze")
 async def analyze_essay(request: AnalyzeRequest):
     """
@@ -48,4 +56,4 @@ async def analyze_essay(request: AnalyzeRequest):
 if __name__ == "__main__":
     import uvicorn
     # In production, use "uvicorn main:app --host 0.0.0.0 --port 8000"
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

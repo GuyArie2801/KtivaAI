@@ -47,16 +47,23 @@ class SynthesizerAgent(BaseAgent):
             HumanMessage(content=human_prompt)
         ])
 
+        # Extract usage info
+        usage = response.response_metadata.get("token_usage", {})
+        total_tokens = usage.get("total_tokens", 0)
+
         raw_content = response.content
         if "```json" in raw_content:
             raw_content = raw_content.split("```json")[1].split("```")[0].strip()
         
         try:
-            return json.loads(raw_content)
+            result = json.loads(raw_content)
+            result["_usage"] = total_tokens
+            return result
         except json.JSONDecodeError:
             return {
                 "content_score": content_eval.get("content_score", 0),
                 "language_score": language_eval.get("language_score", 0),
                 "total_score": (content_eval.get("content_score", 0) + language_eval.get("language_score", 0)) / 2,
-                "hebrew_feedback": f"Error parsing synthesizer output. Raw: {raw_content}"
+                "hebrew_feedback": f"Error parsing synthesizer output. Raw: {raw_content}",
+                "_usage": total_tokens
             }

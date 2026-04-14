@@ -4,6 +4,7 @@ from typing import AsyncGenerator
 from .content_specialist import ContentSpecialistAgent
 from .language_specialist import LanguageSpecialistAgent
 from .synthesizer import SynthesizerAgent
+from usage_tracker import update_usage
 
 class EvaluationAgent:
     """
@@ -33,12 +34,25 @@ class EvaluationAgent:
         # Run both in parallel
         content_eval, language_eval = await asyncio.gather(content_task, language_task)
         
+        # Track initial usage
+        total_tokens = content_eval.get("_usage", 0) + language_eval.get("_usage", 0)
+
         yield "ניתוח הממדים הושלם."
         await asyncio.sleep(0.5)
 
         # 3. Synthesizer
         yield "מנתח סופי מגבש משוב ומיישב סתירות..."
         final_result = await self.synthesizer.synthesize(assignment_text, user_essay, content_eval, language_eval)
+        
+        # Add synthesizer usage
+        total_tokens += final_result.get("_usage", 0)
+        
+        # Persist usage
+        update_usage(total_tokens)
 
         yield "התהליך הסתיים."
+        # Remove internal usage key before returning to user
+        if "_usage" in final_result:
+            del final_result["_usage"]
+            
         yield json.dumps(final_result)

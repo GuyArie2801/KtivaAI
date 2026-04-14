@@ -29,12 +29,18 @@ class LanguageSpecialistAgent(BaseAgent):
             HumanMessage(content=human_prompt)
         ])
 
+        # Extract usage info
+        usage = response.response_metadata.get("token_usage", {})
+        total_tokens = usage.get("total_tokens", 0)
+
         raw_content = response.content
         if "```json" in raw_content:
             raw_content = raw_content.split("```json")[1].split("```")[0].strip()
         
         try:
-            return json.loads(raw_content)
+            result = json.loads(raw_content)
+            result["_usage"] = total_tokens
+            return result
         except json.JSONDecodeError:
             # Fallback for LLM non-JSON output
-            return {"language_score": 0, "language_feedback": f"Error parsing: {raw_content}"}
+            return {"language_score": 0, "language_feedback": f"Error parsing: {raw_content}", "_usage": total_tokens}
