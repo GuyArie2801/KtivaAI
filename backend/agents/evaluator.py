@@ -10,7 +10,7 @@ class EvaluationAgent:
     EvaluationAgent coordinates the agentic workflow.
     """
 
-    def __init__(self, model_name: str = "gemini-2.0-flash"):
+    def __init__(self, model_name: str = "gpt-4o-mini"):
         self.content_agent = ContentSpecialistAgent(model_name)
         self.language_agent = LanguageSpecialistAgent(model_name)
         self.synthesizer = SynthesizerAgent(model_name)
