@@ -1,14 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   BrainCircuit, 
   MessageSquare, 
   CheckCircle2, 
   Loader2,
   BookOpen,
-  ArrowLeft
+  ArrowLeft,
+  Activity
 } from "lucide-react";
+
+function UsageStats() {
+  const [usage, setUsage] = useState<{ used: number; limit: number } | null>(null);
+
+  const fetchUsage = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/usage");
+      if (response.ok) {
+        const data = await response.json();
+        setUsage(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch usage", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsage();
+    
+    // Listen for custom refresh events
+    const handleRefresh = () => fetchUsage();
+    window.addEventListener("refresh-usage", handleRefresh);
+    
+    const interval = setInterval(fetchUsage, 30000); // Refresh every 30s
+    
+    return () => {
+      window.removeEventListener("refresh-usage", handleRefresh);
+      clearInterval(interval);
+    };
+  }, []);
+
+  if (!usage) return null;
+
+  const percentage = Math.min(100, (usage.used / usage.limit) * 100);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-full max-w-xs fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-right-4">
+      <div className="flex items-center gap-2 mb-2 text-slate-900 font-bold text-sm">
+        <Activity className="w-4 h-4 text-blue-600" />
+        <span>שימוש במכסה (Tokens)</span>
+      </div>
+      <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
+        <div 
+          className={`h-full transition-all duration-500 ${percentage > 90 ? 'bg-red-500' : 'bg-blue-600'}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-xs text-slate-500 font-medium">
+        <span>{usage.used.toLocaleString()} בשימוש</span>
+        <span>מתוך {usage.limit.toLocaleString()}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [prompt, setPrompt] = useState("");
@@ -18,6 +73,7 @@ export default function HomePage() {
   const [result, setResult] = useState<{
     content_score: number;
     language_score: number;
+    total_score?: number;
     hebrew_feedback: string;
   } | null>(null);
   
@@ -58,6 +114,8 @@ export default function HomePage() {
             try {
               const data = JSON.parse(line);
               setResult(data);
+              // Trigger a refresh of the usage stats after completion
+              window.dispatchEvent(new CustomEvent("refresh-usage"));
             } catch (e) {
               console.error("Failed to parse JSON chunk", e);
             }
@@ -76,6 +134,7 @@ export default function HomePage() {
 
   return (
     <main className="flex-grow flex flex-col items-center w-full">
+      <UsageStats />
       {/* Hero Section */}
       <section className="w-full bg-white border-b border-slate-200 py-16 md:py-24 px-4 text-center">
         <div className="max-w-4xl mx-auto space-y-6">
